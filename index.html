@@ -478,7 +478,7 @@ function renderCart(step){
           <label><input type="radio" name="o_ch" value="Viber"> Viber</label>
           <label><input type="radio" name="o_ch" value="Пошта"> Пошта</label>
         </div></div>
-      <label class="f"><span>Ваш телефон, нік або пошта для зв'язку <span class="req">*</span></span><input id="o_contact"></label>
+      <label class="f"><span>Ваш телефон, нік або пошта для зв'язку <span class="req">*</span></span><input id="o_contact" placeholder="@нік або номер телефону"></label>
       <label class="f">Електронна пошта<input id="o_email" type="email" autocomplete="email"></label>
       <label class="f">Коментар<textarea id="o_note" rows="2" placeholder="Наприклад, для якого класу потрібен матеріал"></textarea></label>
       <p class="hint" id="o_err" hidden style="color:#c43a3a">Вкажіть ім'я та контакт, щоб я могла з вами зв'язатися.</p>`;
@@ -630,8 +630,9 @@ document.addEventListener("click",e=>{
   else if(t.id==="toForm"){renderCart("form")}
   else if(t.id==="back"){renderCart()}
   else if(t.id==="confirm"){
-    const n=$("#o_name").value.trim(),c=$("#o_contact").value.trim(); if(!n||!c){$("#o_err").hidden=false;return}
+    const n=$("#o_name").value.trim(),c=$("#o_contact").value.trim(); if(!n||!c){$("#o_err").textContent="Вкажіть ім'я та контакт, щоб я могла з вами зв'язатися.";$("#o_err").hidden=false;return}
     const chEl=document.querySelector("input[name='o_ch']:checked"); window._channel=chEl?chEl.value:"Telegram";
+    if(window._channel==="Пошта"&&!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(c)){$("#o_err").textContent="Вкажіть правильну адресу пошти, наприклад name@gmail.com.";$("#o_err").hidden=false;$("#o_contact").focus();return}
     const items=cartItems(),sum=items.reduce((a,p)=>a+Number(p.price||0),0),em=$("#o_email").value.trim(),nt=$("#o_note").value.trim();
     const list=items.map((p,i)=>`${i+1}. ${p.title} — ${money(p.price)}${p.unit||""}`).join("\n");
     window._order=`Замовлення з «Крамниці ідей»\n\n${list}\n\nРазом: ${money(sum)}\n\nІм'я: ${n}\nЗв'язок: ${window._channel}\nКонтакт: ${c}`+(em?`\nПошта: ${em}`:"")+(nt?`\nКоментар: ${nt}`:"");
@@ -662,6 +663,7 @@ async function setHero(imageData){
   catch(err){toast("Немає зв'язку з таблицею. Можливо, потрібно оновити розгортання Apps Script.")}
 }
 document.addEventListener("change",async e=>{
+  if(e.target.name==="o_ch"){const ci=$("#o_contact");if(ci){const m=e.target.value==="Пошта";ci.type=m?"email":"text";ci.placeholder=m?"name@gmail.com":e.target.value==="Viber"?"Номер телефону":"@нік або номер телефону"}return}
   if(e.target.id==="h_file"&&e.target.files[0]){try{setHero(await resizeImage(e.target.files[0],2000))}catch(err){toast("Не вдалося відкрити зображення")}return}
   if(e.target.id!=="a_file"||!e.target.files[0]) return;
   try{pendingImage=await resizeImage(e.target.files[0]);const pr=$("#a_prev");pr.style.backgroundImage=`url('${pendingImage}')`;pr.textContent="";pr.dataset.removed=""}
