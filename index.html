@@ -123,6 +123,24 @@ a.add{text-decoration:none}
 .vbox iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .vbox .vtop{display:flex;justify-content:space-between;align-items:center;color:#fff;font-weight:800;gap:10px}
 .vbox .vtop button{border:0;background:rgba(255,255,255,.15);color:#fff;width:40px;height:40px;border-radius:10px;font-size:18px;flex:0 0 auto}
+.more{border:0;background:none;padding:0;font-size:13px;font-weight:800;color:var(--blue);text-align:left;cursor:pointer}
+.cover[data-open],.info h3[data-open]{cursor:pointer}
+.dmodal{position:fixed;inset:0;z-index:35;background:rgba(10,20,60,.55);display:grid;place-items:center;overflow:auto;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.dbox{position:relative;width:min(900px,100%);background:var(--white);border-radius:18px;box-shadow:0 30px 60px -20px rgba(0,0,0,.45);overflow:hidden;margin:auto}
+.dbox .dclose{position:absolute;right:12px;top:12px;z-index:2;border:0;background:rgba(255,255,255,.95);width:40px;height:40px;border-radius:999px;font-size:18px;box-shadow:var(--shadow)}
+.dhero{aspect-ratio:16/7;max-width:100%;background:var(--cbg,var(--p2)) center/cover no-repeat;display:grid;place-items:center;text-align:center;padding:20px}
+.dhero .ct{font-family:var(--f-head);font-weight:800;color:var(--cfg,var(--ink));font-size:clamp(22px,4vw,34px);text-wrap:balance}
+.dbody{padding:22px 24px 24px;display:grid;gap:14px}
+.dbody h2{margin:0;font-family:var(--f-head);font-weight:800;color:var(--ink);font-size:clamp(22px,3vw,28px);line-height:1.15;text-wrap:balance}
+.dtags{display:flex;flex-wrap:wrap;gap:8px}
+.dtags span{background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:800;color:var(--ink)}
+.dtext{white-space:pre-line;font-size:16px;line-height:1.65;max-width:68ch;margin:0}
+.dvideo{position:relative;aspect-ratio:16/9;max-width:100%;border-radius:12px;overflow:hidden;background:#000}
+.dvideo iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.dbuy{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;border-top:1px solid var(--line);padding-top:16px;position:sticky;bottom:0;background:var(--white)}
+.dbuy .price{margin:0;font-size:30px}
+.dbuy .add{width:auto;padding:13px 22px;font-size:16px}
+.dlinks{display:flex;flex-wrap:wrap;gap:16px}
 .add.soon{background:var(--soft);color:var(--muted);cursor:default}
 .demo{font-size:13px;font-weight:800;color:var(--blue)}
 .empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:36px 12px;background:var(--soft);border-radius:16px;border:1px dashed #cfd6e6;font-weight:600}
@@ -346,6 +364,7 @@ pre.order{white-space:pre-wrap;background:var(--soft);border:1px solid var(--lin
   <header><h2>Кабінет авторки</h2><button class="x" data-close type="button" aria-label="Закрити">✕</button></header>
   <div class="scroll" id="adminBody"></div>
 </aside>
+<div class="dmodal" id="dmodal" hidden><div class="dbox" role="dialog" aria-modal="true" aria-label="Детальніше про матеріал"><button class="dclose" type="button" id="dclose" aria-label="Закрити">✕</button><div id="dcontent"></div></div></div>
 <div class="vmodal" id="vmodal" hidden><div class="vbox"><div class="vtop"><span id="vtitle"></span><button type="button" id="vclose" aria-label="Закрити">✕</button></div><div class="vframe" id="vframe"></div></div></div>
 <div class="toast" id="toast" hidden></div>
 
@@ -411,6 +430,27 @@ function videoBtn(p){if(!p.video)return "";const y=ytId(p.video);
   return y?`<button class="vid" type="button" data-video="${esc(p.id)}">▶ Дивитися огляд</button>`:`<a class="vid" href="${esc(p.video)}" target="_blank" rel="noopener">▶ Дивитися огляд</a>`}
 function openVideo(p){const y=ytId(p.video);if(!y)return;$("#vtitle").textContent=p.title;
   $("#vframe").innerHTML=`<iframe src="https://www.youtube-nocookie.com/embed/${y}?autoplay=1&rel=0" title="Відеоогляд" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`;$("#vmodal").hidden=false}
+function buyBtn(p){const free=Number(p.price)===0, inCart=cart.includes(p.id);
+  return free?(p.demo?`<a class="add free" href="${esc(p.demo)}" target="_blank" rel="noopener"><svg class="ic"><use href="#i-cloud"/></svg>Завантажити безплатно</a>`:`<span class="add soon">Скоро буде доступно</span>`)
+    :`<button class="add ${inCart?"in":""}" type="button" data-add="${esc(p.id)}"><svg class="ic"><use href="#i-cart"/></svg>${inCart?"У кошику":"До кошика"}</button>`}
+function openDetail(id){
+  const p=products.find(x=>x.id===id); if(!p) return;
+  const t=tintOf(p), src=imgSrc(p.image), y=ytId(p.video), free=Number(p.price)===0;
+  $("#dcontent").innerHTML=`
+    <div class="dhero" style="--cbg:var(--p${t});--cfg:var(--i${t});${src?`background-image:url('${esc(src)}')`:""}">${src?"":`<div class="ct">${esc(p.title)}</div>`}</div>
+    <div class="dbody">
+      <h2>${esc(p.title)}</h2>
+      <div class="dtags">${[sec(p.section).name,p.format,p.subject,clsLabel(p.classes)].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join("")}${p.isNew?`<span style="background:var(--band)">Новинка</span>`:""}</div>
+      ${p.desc?`<p class="dtext">${esc(p.desc)}</p>`:""}
+      ${y?`<div class="dvideo"><iframe src="https://www.youtube-nocookie.com/embed/${y}?rel=0" title="Відеоогляд" allow="encrypted-media; fullscreen" allowfullscreen loading="lazy"></iframe></div>`:""}
+      <div class="dlinks">${p.video&&!y?`<a class="vid" href="${esc(p.video)}" target="_blank" rel="noopener">▶ Дивитися відеоогляд</a>`:""}${p.demo&&!free?`<a class="demo" href="${esc(p.demo)}" target="_blank" rel="noopener">Переглянути демо →</a>`:""}<button class="more" type="button" id="dshare">Скопіювати посилання на цей матеріал</button></div>
+      <div class="dbuy"><div class="price">${free?"Безплатно":money(p.price)+(p.unit?`<small>${esc(p.unit)}</small>`:"")}</div>${buyBtn(p)}</div>
+    </div>`;
+  $("#dmodal").hidden=false; $("#dmodal").scrollTop=0; window._detail=id;
+  try{history.replaceState(null,"","#p-"+id)}catch(e){}
+}
+function closeDetail(){if($("#dmodal").hidden)return;$("#dmodal").hidden=true;$("#dcontent").innerHTML="";window._detail=null;try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}}
+function refreshDetail(){if(window._detail)openDetail(window._detail)}
 function closeVideo(){$("#vmodal").hidden=true;$("#vframe").innerHTML=""}
 
 async function api(body){
@@ -423,7 +463,7 @@ async function loadProducts(){
     const r=await (await fetch(SETTINGS.api+"?action=list")).json();
     if(r.ok){products=r.products;store.set("kr_cache",products);if(r.settings){store.set("kr_settings",r.settings);applySettings(r.settings)}}
   }catch(e){ if(!products.length) toast("Не вдалося завантажити роботи. Оновіть сторінку.") }
-  loading=false; cart=cart.filter(id=>products.some(p=>p.id===id)); store.set("kr_cart",cart);
+  loading=false; setTimeout(openFromHash,0); cart=cart.filter(id=>products.some(p=>p.id===id)); store.set("kr_cart",cart);
   renderPills();renderAll();
 }
 
@@ -444,16 +484,16 @@ function renderPills(){
 function card(p){
   const t=tintOf(p), src=imgSrc(p.image), inCart=cart.includes(p.id), fav=favs.includes(p.id), free=Number(p.price)===0;
   return `<article class="card">
-    <div class="cover" style="--cbg:var(--p${t});--cfg:var(--i${t})">
+    <div class="cover" data-open="${esc(p.id)}" style="--cbg:var(--p${t});--cfg:var(--i${t})">
       ${src?`<img src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:`<div class="ct">${esc(p.title)}${clsLabel(p.classes)?`<small>${clsLabel(p.classes)}</small>`:""}</div>`}
       ${p.isNew?`<span class="new">Новинка</span>`:""}
       <button class="fav" type="button" data-fav="${esc(p.id)}" aria-pressed="${fav}" aria-label="В обране"><svg class="ic"><use href="#i-heart"/></svg></button>
     </div>
     <div class="info">
-      <h3>${esc(p.title)}</h3>
+      <h3 data-open="${esc(p.id)}">${esc(p.title)}</h3>
       <div class="meta">${esc(p.format||sec(p.section).name)}${clsLabel(p.classes)?" · "+clsLabel(p.classes):""}</div>
       ${p.desc?`<p class="desc">${esc(p.desc)}</p>`:""}
-      ${videoBtn(p)}
+      <button class="more" type="button" data-open="${esc(p.id)}">Детальніше${p.video?" і відеоогляд":""} →</button>
       ${p.demo&&!free?`<a class="demo" href="${esc(p.demo)}" target="_blank" rel="noopener">Переглянути демо →</a>`:""}
       <div class="price">${free?"Безплатно":money(p.price)+(p.unit?`<small>${esc(p.unit)}</small>`:"")}</div>
       ${free?(p.demo?`<a class="add free" href="${esc(p.demo)}" target="_blank" rel="noopener"><svg class="ic"><use href="#i-cloud"/></svg>Завантажити безплатно</a>`:`<span class="add soon">Скоро буде доступно</span>`)
@@ -559,7 +599,7 @@ function renderAdmin(){
       <label class="f">Формат<input id="a_format" value="${esc(p?.format)}" placeholder="PDF • цифровий товар"></label></div>
     <div style="display:grid;gap:5px;font-size:13px;font-weight:800;color:var(--ink)">Класи
       <div class="chips">${CLASSES.map(c=>`<button class="chip" type="button" data-acls="${c}" aria-pressed="${!!(p&&(p.classes||[]).includes(c))}">${c}</button>`).join("")}</div></div>
-    <label class="f">Опис<textarea id="a_desc" rows="3">${esc(p?.desc)}</textarea></label>
+    <label class="f">Опис<span class="hint" style="font-weight:600">На картці видно перші рядки, а повний текст — у вікні «Детальніше». Можна писати абзацами.</span><textarea id="a_desc" rows="7">${esc(p?.desc)}</textarea></label>
     <div class="coverpick">
       <div class="cprev" id="a_prev" style="${cur?`background-image:url('${esc(cur)}')`:""}">${cur?"":"Без обкладинки"}</div>
       <div style="display:grid;gap:6px;min-width:0">
@@ -635,14 +675,17 @@ function closeAll(){$("#scrim").hidden=true;$("#cartPanel").hidden=true;$("#admi
 function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2600)}
 
 document.addEventListener("click",e=>{
+  const o=e.target.closest("[data-open]"); if(o&&!e.target.closest(".fav")){openDetail(o.dataset.open);return}
   const t=e.target.closest("button"); if(!t) return;
   if(t.matches("[data-close]")) return closeAll();
   if(t.dataset.video){const p=products.find(x=>x.id===t.dataset.video);if(p)openVideo(p);return}
+  if(t.id==="dclose") return closeDetail();
+  if(t.id==="dshare"){const u=location.origin+location.pathname+"#p-"+window._detail;(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>toast("Посилання скопійовано")).catch(()=>toast(u));return}
   if(t.id==="vclose") return closeVideo();
   if(t.dataset.sec){state.section=state.section===t.dataset.sec?null:t.dataset.sec;state.favOnly=false;renderPills();renderAll();toCatalog()}
   else if(t.dataset.cls){state.cls=state.cls===t.dataset.cls?null:t.dataset.cls;renderPills();renderAll()}
   else if(t.dataset.fav){const id=t.dataset.fav;favs=favs.includes(id)?favs.filter(x=>x!==id):[...favs,id];store.set("kr_favs",favs);renderAll()}
-  else if(t.dataset.add){const id=t.dataset.add;if(cart.includes(id)){openP("#cartPanel");renderCart()}else{cart.push(id);store.set("kr_cart",cart);renderAll();toast("Додано до кошика")}}
+  else if(t.dataset.add){const id=t.dataset.add;if(cart.includes(id)){closeDetail();openP("#cartPanel");renderCart()}else{cart.push(id);store.set("kr_cart",cart);renderAll();refreshDetail();toast("Додано до кошика")}}
   else if(t.dataset.rm){cart=cart.filter(x=>x!==t.dataset.rm);store.set("kr_cart",cart);renderCart();renderAll()}
   else if(t.id==="openCart"){openP("#cartPanel");renderCart()}
   else if(t.id==="goSearch"){$("#q").focus();$("#q").scrollIntoView({block:"center"})}
@@ -690,16 +733,18 @@ document.addEventListener("change",async e=>{
   try{pendingImage=await resizeImage(e.target.files[0]);const pr=$("#a_prev");pr.style.backgroundImage=`url('${pendingImage}')`;pr.textContent="";pr.dataset.removed=""}
   catch(err){toast("Не вдалося відкрити зображення")}
 });
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeAll();closeVideo()}if(e.key==="Enter"&&e.target.id==="a_pass")login()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(!$("#vmodal").hidden)closeVideo();else if(!$("#dmodal").hidden)closeDetail();else closeAll()}if(e.key==="Enter"&&e.target.id==="a_pass")login()});
 $("#scrim").addEventListener("click",closeAll);
 $("#vmodal").addEventListener("click",e=>{if(e.target.id==="vmodal")closeVideo()});
+$("#dmodal").addEventListener("click",e=>{if(e.target.id==="dmodal")closeDetail()});
+function openFromHash(){const m=location.hash.match(/^#p-(.+)$/);if(m&&products.some(p=>p.id===m[1]))openDetail(m[1])}
 $("#subject").addEventListener("change",e=>{state.subject=e.target.value;renderAll()});
 $("#q").addEventListener("input",e=>{state.q=e.target.value;state.favOnly=false;renderAll()});
 $("#q").addEventListener("keydown",e=>{if(e.key==="Enter")toCatalog()});
 function markNav(){const h=(location.hash||"#home").slice(1);document.querySelectorAll("[data-nav]").forEach(a=>a.classList.toggle("on",a.dataset.nav===h))}
 window.addEventListener("hashchange",markNav);
 
-renderPills();renderAll();markNav();loadProducts();
+renderPills();renderAll();markNav();if(!LIVE)openFromHash();loadProducts();
 </script>
 
 </body>
