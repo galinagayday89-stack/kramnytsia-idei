@@ -437,9 +437,11 @@ function driveId(u){const m=String(u||"").match(/drive\.google\.com\/(?:file\/d\
 function cleanVideo(v){v=String(v||"").trim();const m=v.match(/<iframe[^>]*\ssrc=["']([^"']+)["']/i);if(m)v=m[1].replace(/&amp;/g,"&");return v}
 function fbHref(u){u=String(u||"");if(/facebook\.com\/plugins\/video\.php/i.test(u)){const m=u.match(/[?&]href=([^&]+)/);return m?decodeURIComponent(m[1]):""}
   return /^(https?:\/\/)?((www|m|web)\.)?(facebook\.com|fb\.watch)\//i.test(u)?u:""}
-function isVertical(u){return /\/reel\/|\/shorts\//i.test(fbHref(u)||u)}
+/* Вертикальне — лише якщо в коді вбудовування висота більша за ширину або це YouTube Shorts */
+function isVertical(u){u=cleanVideo(u);if(/youtube\.com\/shorts\//i.test(u))return true;
+  const w=+(u.match(/[?&]width=(\d+)/)||[])[1],h=+(u.match(/[?&]height=(\d+)/)||[])[1];return !!(w&&h&&h>w)}
 function embedSrc(u){u=cleanVideo(u);const y=ytId(u);if(y)return `https://www.youtube-nocookie.com/embed/${y}?rel=0`;const d=driveId(u);if(d)return `https://drive.google.com/file/d/${d}/preview`;
-  const fb=fbHref(u);if(fb)return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(fb)}&show_text=false&width=560`;return ""}
+  const fb=fbHref(u);if(fb)return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(fb)}&show_text=false&width=${isVertical(u)?320:560}${isVertical(u)?"&height=560":""}`;return ""}
 function videoBtn(p){if(!p.video)return "";const y=ytId(p.video);
   return y?`<button class="vid" type="button" data-video="${esc(p.id)}">▶ Дивитися огляд</button>`:`<a class="vid" href="${esc(p.video)}" target="_blank" rel="noopener">▶ Дивитися огляд</a>`}
 function openVideo(p){const y=ytId(p.video);if(!y)return;$("#vtitle").textContent=p.title;
