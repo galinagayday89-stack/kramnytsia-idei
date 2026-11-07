@@ -116,6 +116,13 @@ section.block .wrap{padding-block:18px}
 .add.in{background:#1f8a5a}
 a.add{text-decoration:none}
 .add.free{background:#1f8a5a}
+.vid{display:inline-flex;align-items:center;gap:6px;border:0;background:none;padding:0;font-size:13px;font-weight:800;color:#c43a3a;text-decoration:none;cursor:pointer}
+.vmodal{position:fixed;inset:0;z-index:40;background:rgba(5,10,30,.82);display:grid;place-items:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.vbox{width:min(960px,100%);display:grid;gap:10px}
+.vbox .vframe{position:relative;aspect-ratio:16/9;max-width:100%;background:#000;border-radius:12px;overflow:hidden}
+.vbox iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vbox .vtop{display:flex;justify-content:space-between;align-items:center;color:#fff;font-weight:800;gap:10px}
+.vbox .vtop button{border:0;background:rgba(255,255,255,.15);color:#fff;width:40px;height:40px;border-radius:10px;font-size:18px;flex:0 0 auto}
 .add.soon{background:var(--soft);color:var(--muted);cursor:default}
 .demo{font-size:13px;font-weight:800;color:var(--blue)}
 .empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:36px 12px;background:var(--soft);border-radius:16px;border:1px dashed #cfd6e6;font-weight:600}
@@ -339,6 +346,7 @@ pre.order{white-space:pre-wrap;background:var(--soft);border:1px solid var(--lin
   <header><h2>Кабінет авторки</h2><button class="x" data-close type="button" aria-label="Закрити">✕</button></header>
   <div class="scroll" id="adminBody"></div>
 </aside>
+<div class="vmodal" id="vmodal" hidden><div class="vbox"><div class="vtop"><span id="vtitle"></span><button type="button" id="vclose" aria-label="Закрити">✕</button></div><div class="vframe" id="vframe"></div></div></div>
 <div class="toast" id="toast" hidden></div>
 
 <script>
@@ -398,6 +406,12 @@ const sec=id=>SECTIONS.find(s=>s.id===id)||{name:"",c:2};
 const imgSrc=v=>!v?"":(IMG[v]||v);
 const clsLabel=a=>!a||!a.length?"":a.length===1?a[0]+" клас":a[0]+"–"+a[a.length-1]+" кл.";
 const tintOf=p=>sec(p.section).c;
+function ytId(u){const m=String(u||"").match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/))([\w-]{11})/);return m?m[1]:""}
+function videoBtn(p){if(!p.video)return "";const y=ytId(p.video);
+  return y?`<button class="vid" type="button" data-video="${esc(p.id)}">▶ Дивитися огляд</button>`:`<a class="vid" href="${esc(p.video)}" target="_blank" rel="noopener">▶ Дивитися огляд</a>`}
+function openVideo(p){const y=ytId(p.video);if(!y)return;$("#vtitle").textContent=p.title;
+  $("#vframe").innerHTML=`<iframe src="https://www.youtube-nocookie.com/embed/${y}?autoplay=1&rel=0" title="Відеоогляд" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`;$("#vmodal").hidden=false}
+function closeVideo(){$("#vmodal").hidden=true;$("#vframe").innerHTML=""}
 
 async function api(body){
   const r=await fetch(SETTINGS.api,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)});
@@ -439,6 +453,7 @@ function card(p){
       <h3>${esc(p.title)}</h3>
       <div class="meta">${esc(p.format||sec(p.section).name)}${clsLabel(p.classes)?" · "+clsLabel(p.classes):""}</div>
       ${p.desc?`<p class="desc">${esc(p.desc)}</p>`:""}
+      ${videoBtn(p)}
       ${p.demo&&!free?`<a class="demo" href="${esc(p.demo)}" target="_blank" rel="noopener">Переглянути демо →</a>`:""}
       <div class="price">${free?"Безплатно":money(p.price)+(p.unit?`<small>${esc(p.unit)}</small>`:"")}</div>
       ${free?(p.demo?`<a class="add free" href="${esc(p.demo)}" target="_blank" rel="noopener"><svg class="ic"><use href="#i-cloud"/></svg>Завантажити безплатно</a>`:`<span class="add soon">Скоро буде доступно</span>`)
@@ -555,6 +570,7 @@ function renderAdmin(){
     </div>
     <p class="hint">Для безплатного матеріалу поставте ціну 0 і вкажіть нижче посилання на файл (наприклад, на Google Диску).</p>
     <label class="f">Посилання на демо або на файл для безплатного<input id="a_demo" value="${esc(p?.demo)}" placeholder="https://..."></label>
+    <label class="f">Відеоогляд (посилання на YouTube, Google Диск або Фейсбук)<input id="a_video" value="${esc(p?.video)}" placeholder="https://youtu.be/..."></label>
     <label class="f">Одиниця ціни (необов'язково)<input id="a_unit" value="${esc(p?.unit)}" placeholder="/міс"></label>
     <div class="checks"><label><input type="checkbox" id="a_pop" ${p?.popular?"checked":""}> Популярне</label><label><input type="checkbox" id="a_new" ${p?.isNew?"checked":""}> Новинка</label></div>
     <button class="primary" id="a_save" type="button">${p?"Зберегти зміни":"Додати в крамницю"}</button>
@@ -583,7 +599,7 @@ async function saveItem(){
   const old=editId?products.find(x=>x.id===editId):null;
   const removeImg=$("#a_prev").dataset.removed==="1";
   const item={id:editId||"",title,section:$("#a_section").value,price:Number(pv),subject:$("#a_subject").value.trim(),format:$("#a_format").value.trim(),
-    desc:$("#a_desc").value.trim(),demo:$("#a_demo").value.trim(),unit:$("#a_unit").value.trim(),image:removeImg?"":(old?.image||""),
+    desc:$("#a_desc").value.trim(),demo:$("#a_demo").value.trim(),video:$("#a_video").value.trim(),unit:$("#a_unit").value.trim(),image:removeImg?"":(old?.image||""),
     popular:$("#a_pop").checked,isNew:$("#a_new").checked,classes:[...document.querySelectorAll("[data-acls][aria-pressed='true']")].map(b=>b.dataset.acls)};
   if(!LIVE){
     item.id=item.id||("p"+Date.now()); if(pendingImage) item.image=pendingImage;
@@ -621,6 +637,8 @@ function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTim
 document.addEventListener("click",e=>{
   const t=e.target.closest("button"); if(!t) return;
   if(t.matches("[data-close]")) return closeAll();
+  if(t.dataset.video){const p=products.find(x=>x.id===t.dataset.video);if(p)openVideo(p);return}
+  if(t.id==="vclose") return closeVideo();
   if(t.dataset.sec){state.section=state.section===t.dataset.sec?null:t.dataset.sec;state.favOnly=false;renderPills();renderAll();toCatalog()}
   else if(t.dataset.cls){state.cls=state.cls===t.dataset.cls?null:t.dataset.cls;renderPills();renderAll()}
   else if(t.dataset.fav){const id=t.dataset.fav;favs=favs.includes(id)?favs.filter(x=>x!==id):[...favs,id];store.set("kr_favs",favs);renderAll()}
@@ -672,8 +690,9 @@ document.addEventListener("change",async e=>{
   try{pendingImage=await resizeImage(e.target.files[0]);const pr=$("#a_prev");pr.style.backgroundImage=`url('${pendingImage}')`;pr.textContent="";pr.dataset.removed=""}
   catch(err){toast("Не вдалося відкрити зображення")}
 });
-document.addEventListener("keydown",e=>{if(e.key==="Escape")closeAll();if(e.key==="Enter"&&e.target.id==="a_pass")login()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeAll();closeVideo()}if(e.key==="Enter"&&e.target.id==="a_pass")login()});
 $("#scrim").addEventListener("click",closeAll);
+$("#vmodal").addEventListener("click",e=>{if(e.target.id==="vmodal")closeVideo()});
 $("#subject").addEventListener("change",e=>{state.subject=e.target.value;renderAll()});
 $("#q").addEventListener("input",e=>{state.q=e.target.value;state.favOnly=false;renderAll()});
 $("#q").addEventListener("keydown",e=>{if(e.key==="Enter")toCatalog()});
