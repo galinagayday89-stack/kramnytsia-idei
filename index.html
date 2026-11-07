@@ -136,6 +136,7 @@ a.add{text-decoration:none}
 .dtags span{background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:800;color:var(--ink)}
 .dtext{white-space:pre-line;font-size:16px;line-height:1.65;max-width:68ch;margin:0}
 .dvideo{position:relative;aspect-ratio:16/9;max-width:100%;border-radius:12px;overflow:hidden;background:#000}
+.dvideo.vert{aspect-ratio:9/16;width:min(360px,100%);justify-self:center}
 .dvideo iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .dbuy{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;border-top:1px solid var(--line);padding-top:16px;position:sticky;bottom:0;background:var(--white)}
 .dbuy .price{margin:0;font-size:30px}
@@ -431,6 +432,14 @@ const VTAG=/\s*\[відео\]\s*(\S+)\s*$/;
 function normalize(list){return (list||[]).map(p=>{const q={...p};const m=String(q.desc||"").match(VTAG);
   if(m){q.desc=q.desc.replace(VTAG,"");if(!q.video)q.video=m[1]}return q})}
 function ytId(u){const m=String(u||"").match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/))([\w-]{11})/);return m?m[1]:""}
+function driveId(u){const m=String(u||"").match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:.*&)?id=)([\w-]{20,})/);return m?m[1]:""}
+/* Із коду вбудовування (iframe) беремо лише адресу; повертаємо чисте посилання */
+function cleanVideo(v){v=String(v||"").trim();const m=v.match(/<iframe[^>]*\ssrc=["']([^"']+)["']/i);if(m)v=m[1].replace(/&amp;/g,"&");return v}
+function fbHref(u){u=String(u||"");if(/facebook\.com\/plugins\/video\.php/i.test(u)){const m=u.match(/[?&]href=([^&]+)/);return m?decodeURIComponent(m[1]):""}
+  return /^(https?:\/\/)?((www|m|web)\.)?(facebook\.com|fb\.watch)\//i.test(u)?u:""}
+function isVertical(u){return /\/reel\/|\/shorts\//i.test(fbHref(u)||u)}
+function embedSrc(u){u=cleanVideo(u);const y=ytId(u);if(y)return `https://www.youtube-nocookie.com/embed/${y}?rel=0`;const d=driveId(u);if(d)return `https://drive.google.com/file/d/${d}/preview`;
+  const fb=fbHref(u);if(fb)return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(fb)}&show_text=false&width=560`;return ""}
 function videoBtn(p){if(!p.video)return "";const y=ytId(p.video);
   return y?`<button class="vid" type="button" data-video="${esc(p.id)}">▶ Дивитися огляд</button>`:`<a class="vid" href="${esc(p.video)}" target="_blank" rel="noopener">▶ Дивитися огляд</a>`}
 function openVideo(p){const y=ytId(p.video);if(!y)return;$("#vtitle").textContent=p.title;
@@ -446,8 +455,8 @@ function openDetail(id){
       <h2>${esc(p.title)}</h2>
       <div class="dtags">${[sec(p.section).name,p.format,p.subject,clsLabel(p.classes)].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join("")}${p.isNew?`<span style="background:var(--band)">Новинка</span>`:""}</div>
       ${p.desc?`<p class="dtext">${esc(p.desc)}</p>`:""}
-      ${y?`<div class="dvideo"><iframe src="https://www.youtube-nocookie.com/embed/${y}?rel=0" title="Відеоогляд" allow="encrypted-media; fullscreen" allowfullscreen loading="lazy"></iframe></div>`:""}
-      <div class="dlinks">${p.video&&!y?`<a class="vid" href="${esc(p.video)}" target="_blank" rel="noopener">▶ Дивитися відеоогляд</a>`:""}${p.demo&&!free?`<a class="demo" href="${esc(p.demo)}" target="_blank" rel="noopener">Переглянути демо →</a>`:""}<button class="more" type="button" id="dshare">Скопіювати посилання на цей матеріал</button></div>
+      ${embedSrc(p.video)?`<div class="dvideo${isVertical(p.video)?" vert":""}"><iframe src="${esc(embedSrc(p.video))}" title="Відеоогляд" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe></div>`:""}
+      <div class="dlinks">${p.video&&!embedSrc(p.video)?`<a class="vid" href="${esc(p.video)}" target="_blank" rel="noopener">▶ Дивитися відеоогляд</a>`:""}${p.demo&&!free?`<a class="demo" href="${esc(p.demo)}" target="_blank" rel="noopener">Переглянути демо →</a>`:""}<button class="more" type="button" id="dshare">Скопіювати посилання на цей матеріал</button></div>
       <div class="dbuy"><div class="price">${free?"Безплатно":money(p.price)+(p.unit?`<small>${esc(p.unit)}</small>`:"")}</div>${buyBtn(p)}</div>
     </div>`;
   $("#dmodal").hidden=false; $("#dmodal").scrollTop=0; window._detail=id;
@@ -614,7 +623,7 @@ function renderAdmin(){
     </div>
     <p class="hint">Для безплатного матеріалу поставте ціну 0 і вкажіть нижче посилання на файл (наприклад, на Google Диску).</p>
     <label class="f">Посилання на демо або на файл для безплатного<input id="a_demo" value="${esc(p?.demo)}" placeholder="https://..."></label>
-    <label class="f">Відеоогляд (посилання на YouTube, Google Диск або Фейсбук)<input id="a_video" value="${esc(p?.video)}" placeholder="https://youtu.be/..."></label>
+    <label class="f">Відеоогляд — посилання або код вбудовування з YouTube, Google Диска чи Фейсбуку<input id="a_video" value="${esc(p?.video)}" placeholder="https://youtu.be/... або <iframe ...>"></label>
     <label class="f">Одиниця ціни (необов'язково)<input id="a_unit" value="${esc(p?.unit)}" placeholder="/міс"></label>
     <div class="checks"><label><input type="checkbox" id="a_pop" ${p?.popular?"checked":""}> Популярне</label><label><input type="checkbox" id="a_new" ${p?.isNew?"checked":""}> Новинка</label></div>
     <button class="primary" id="a_save" type="button">${p?"Зберегти зміни":"Додати в крамницю"}</button>
@@ -643,7 +652,7 @@ async function saveItem(){
   const old=editId?products.find(x=>x.id===editId):null;
   const removeImg=$("#a_prev").dataset.removed==="1";
   const item={id:editId||"",title,section:$("#a_section").value,price:Number(pv),subject:$("#a_subject").value.trim(),format:$("#a_format").value.trim(),
-    desc:$("#a_desc").value.trim(),demo:$("#a_demo").value.trim(),video:$("#a_video").value.trim(),unit:$("#a_unit").value.trim(),image:removeImg?"":(old?.image||""),
+    desc:$("#a_desc").value.trim(),demo:$("#a_demo").value.trim(),video:cleanVideo($("#a_video").value),unit:$("#a_unit").value.trim(),image:removeImg?"":(old?.image||""),
     popular:$("#a_pop").checked,isNew:$("#a_new").checked,classes:[...document.querySelectorAll("[data-acls][aria-pressed='true']")].map(b=>b.dataset.acls)};
   if(!LIVE){
     item.id=item.id||("p"+Date.now()); if(pendingImage) item.image=pendingImage;
