@@ -114,6 +114,9 @@ section.block .wrap{padding-block:18px}
 .add{display:flex;align-items:center;justify-content:center;gap:8px;border:0;background:var(--blue);color:var(--white);font-weight:800;padding:10px 12px;border-radius:10px;width:100%}
 .add svg.ic{width:20px;height:20px}
 .add.in{background:#1f8a5a}
+a.add{text-decoration:none}
+.add.free{background:#1f8a5a}
+.add.soon{background:var(--soft);color:var(--muted);cursor:default}
 .demo{font-size:13px;font-weight:800;color:var(--blue)}
 .empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:36px 12px;background:var(--soft);border-radius:16px;border:1px dashed #cfd6e6;font-weight:600}
 
@@ -237,6 +240,7 @@ pre.order{white-space:pre-wrap;background:var(--soft);border:1px solid var(--lin
       <a href="#home" data-nav="home" class="on">Головна</a>
       <a href="#catalog" data-nav="catalog">Каталог</a>
       <a href="#new" data-nav="new">Новинки</a>
+      <a href="#free" data-nav="free">Безплатно</a>
     </nav>
     <div class="icons">
       <button class="iconbtn" id="goSearch" type="button" aria-label="Пошук"><svg class="ic"><use href="#i-search"/></svg></button>
@@ -292,10 +296,15 @@ pre.order{white-space:pre-wrap;background:var(--soft);border:1px solid var(--lin
   <div class="grid" id="newGrid"></div>
 </div></section>
 
+<section class="block" id="free"><div class="wrap">
+  <div class="head"><h2><svg class="ic"><use href="#i-spark"/></svg>Безплатно</h2></div>
+  <div class="grid" id="freeGrid"></div>
+</div></section>
+
 <section class="perks"><div class="wrap"><ul>
   <li><svg class="ic"><use href="#i-cloud"/></svg>Миттєве отримання</li>
   <li><svg class="ic"><use href="#i-print"/></svg>Готово до друку</li>
-  <li><svg class="ic"><use href="#i-cap"/></svg>Створено вчителькою</li>
+  <li><svg class="ic"><use href="#i-heart"/></svg>Менше підготовки, більше творчості</li>
 </ul></div></section>
 
 <section class="block" id="how"><div class="wrap">
@@ -409,7 +418,7 @@ function renderPills(){
   $("#subject").innerHTML=`<option value="">Усі предмети</option>`+subs.map(s=>`<option ${s===state.subject?"selected":""}>${esc(s)}</option>`).join("");
 }
 function card(p){
-  const t=tintOf(p), src=imgSrc(p.image), inCart=cart.includes(p.id), fav=favs.includes(p.id);
+  const t=tintOf(p), src=imgSrc(p.image), inCart=cart.includes(p.id), fav=favs.includes(p.id), free=Number(p.price)===0;
   return `<article class="card">
     <div class="cover" style="--cbg:var(--p${t});--cfg:var(--i${t})">
       ${src?`<img src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:`<div class="ct">${esc(p.title)}${clsLabel(p.classes)?`<small>${clsLabel(p.classes)}</small>`:""}</div>`}
@@ -420,9 +429,10 @@ function card(p){
       <h3>${esc(p.title)}</h3>
       <div class="meta">${esc(p.format||sec(p.section).name)}${clsLabel(p.classes)?" · "+clsLabel(p.classes):""}</div>
       ${p.desc?`<p class="desc">${esc(p.desc)}</p>`:""}
-      ${p.demo?`<a class="demo" href="${esc(p.demo)}" target="_blank" rel="noopener">Переглянути демо →</a>`:""}
-      <div class="price">${money(p.price)}${p.unit?`<small>${esc(p.unit)}</small>`:""}</div>
-      <button class="add ${inCart?"in":""}" type="button" data-add="${esc(p.id)}"><svg class="ic"><use href="#i-cart"/></svg>${inCart?"У кошику":"До кошика"}</button>
+      ${p.demo&&!free?`<a class="demo" href="${esc(p.demo)}" target="_blank" rel="noopener">Переглянути демо →</a>`:""}
+      <div class="price">${free?"Безплатно":money(p.price)+(p.unit?`<small>${esc(p.unit)}</small>`:"")}</div>
+      ${free?(p.demo?`<a class="add free" href="${esc(p.demo)}" target="_blank" rel="noopener"><svg class="ic"><use href="#i-cloud"/></svg>Завантажити безплатно</a>`:`<span class="add soon">Скоро буде доступно</span>`)
+        :`<button class="add ${inCart?"in":""}" type="button" data-add="${esc(p.id)}"><svg class="ic"><use href="#i-cart"/></svg>${inCart?"У кошику":"До кошика"}</button>`}
     </div></article>`;
 }
 function filtered(){
@@ -433,9 +443,10 @@ function filtered(){
 }
 function renderAll(){
   const wait=`<div class="empty">Завантажуємо роботи…</div>`;
-  const pop=products.filter(p=>p.popular), nw=products.filter(p=>p.isNew), list=filtered();
+  const pop=products.filter(p=>p.popular), nw=products.filter(p=>p.isNew), fr=products.filter(p=>Number(p.price)===0), list=filtered();
   $("#popGrid").innerHTML=loading?wait:pop.length?pop.map(card).join(""):`<div class="empty">Скоро тут з'являться найпопулярніші матеріали.</div>`;
   $("#newGrid").innerHTML=loading?wait:nw.length?nw.map(card).join(""):`<div class="empty">Новинки з'являться тут.</div>`;
+  $("#freeGrid").innerHTML=loading?wait:fr.length?fr.map(card).join(""):`<div class="empty">Безплатні матеріали з'являться тут.</div>`;
   $("#catTitle").textContent=state.favOnly?"Обране":state.section?sec(state.section).name:"Каталог";
   $("#grid").innerHTML=loading?wait:list.length?list.map(card).join(""):`<div class="empty">${state.favOnly?"В обраному поки порожньо. Натисніть сердечко на картці.":"За цими фільтрами нічого немає. Спробуйте інший клас або категорію."}</div>`;
   $("#cartCount").textContent=cart.length;$("#cartCount").dataset.n=cart.length;
@@ -514,13 +525,14 @@ function renderAdmin(){
         <span class="hint">JPG або PNG, краще горизонтальна 3:2</span>
       </div>
     </div>
-    <label class="f">Посилання на демо<input id="a_demo" value="${esc(p?.demo)}" placeholder="https://..."></label>
+    <p class="hint">Для безплатного матеріалу поставте ціну 0 і вкажіть нижче посилання на файл (наприклад, на Google Диску).</p>
+    <label class="f">Посилання на демо або на файл для безплатного<input id="a_demo" value="${esc(p?.demo)}" placeholder="https://..."></label>
     <label class="f">Одиниця ціни (необов'язково)<input id="a_unit" value="${esc(p?.unit)}" placeholder="/міс"></label>
     <div class="checks"><label><input type="checkbox" id="a_pop" ${p?.popular?"checked":""}> Популярне</label><label><input type="checkbox" id="a_new" ${p?.isNew?"checked":""}> Новинка</label></div>
     <button class="primary" id="a_save" type="button">${p?"Зберегти зміни":"Додати в крамницю"}</button>
     ${p?`<button class="ghost" id="a_cancel" type="button">Скасувати</button>`:""}
     <h3 class="h3">Мої роботи (${products.length})</h3>
-    ${products.map(x=>`<div class="adm-item"><div><b>${esc(x.title)}</b><br><small>${esc(sec(x.section).name)} · ${money(x.price)}${x.popular?" · популярне":""}${x.isNew?" · новинка":""}</small></div>
+    ${products.map(x=>`<div class="adm-item"><div><b>${esc(x.title)}</b><br><small>${esc(sec(x.section).name)} · ${Number(x.price)===0?"безплатно":money(x.price)}${x.popular?" · популярне":""}${x.isNew?" · новинка":""}</small></div>
       <div style="display:flex;gap:12px;flex:0 0 auto"><button class="linkbtn" type="button" data-edit="${esc(x.id)}">Змінити</button><button class="rm" type="button" data-del="${esc(x.id)}">Видалити</button></div></div>`).join("")}
     ${LIVE?`<button class="ghost" id="a_logout" type="button">Вийти з кабінету</button>`:`<button class="ghost" id="a_reset" type="button">Повернути приклад каталогу</button>`}`;
 }
