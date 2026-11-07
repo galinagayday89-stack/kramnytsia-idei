@@ -171,6 +171,8 @@ label.f input,label.f select,label.f textarea{border:1.5px solid var(--line);bac
 .channels label:has(input:checked){border-color:var(--blue);background:var(--soft)}
 .contact-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;border-bottom:1px dashed var(--line);padding-bottom:8px}
 .contact-row b{user-select:all}
+a.primary{display:block;text-align:center;text-decoration:none}
+.ghost.copied{border-color:#1f8a5a;color:#1f8a5a}
 .req{color:#c43a3a;font-weight:800}
 .checks{display:flex;gap:16px;flex-wrap:wrap;font-weight:700;font-size:14px}
 .hint{font-size:13px;color:var(--muted);margin:0}
@@ -488,9 +490,9 @@ function renderCart(step){
     const ch=window._channel||"Telegram", S=SETTINGS;
     const subj=encodeURIComponent("Замовлення з «Крамниці ідей»"), body=encodeURIComponent(window._order||"");
     const btn={
-      "Telegram":`<a class="primary" style="text-align:center;text-decoration:none" href="https://t.me/${esc(S.telegram)}" target="_blank" rel="noopener">Відкрити Telegram</a>`,
-      "Viber":`<a class="primary" style="text-align:center;text-decoration:none" href="viber://chat?number=${encodeURIComponent(S.viber)}">Відкрити Viber</a>`,
-      "Пошта":`<a class="primary" style="text-align:center;text-decoration:none" href="mailto:${esc(S.email)}?subject=${subj}&body=${body}">Написати листа</a>`
+      "Telegram":`<a class="ghost" id="goMsg" href="https://t.me/${esc(S.telegram)}" target="_blank" rel="noopener">2. Відкрити Telegram і вставити</a>`,
+      "Viber":`<a class="ghost" id="goMsg" href="viber://chat?number=${encodeURIComponent(S.viber)}">2. Відкрити Viber і вставити</a>`,
+      "Пошта":`<a class="ghost" id="goMsg" href="mailto:${esc(S.email)}?subject=${subj}&body=${body}">2. Написати листа</a>`
     };
     const where={"Telegram":"в Telegram","Viber":"у Viber","Пошта":"на пошту"}[ch];
     $("#cartTitle").textContent="Замовлення прийнято";
@@ -499,7 +501,7 @@ function renderCart(step){
       <div class="contact-row"><span>Telegram</span><b>@${esc(S.telegram)}</b></div>
       <div class="contact-row"><span>Viber</span><b>${esc(S.viber)}</b></div>
       <div class="contact-row"><span>Пошта</span><b>${esc(S.email)}</b></div>`;
-    $("#cartFoot").innerHTML=`<button class="ghost" id="copyOrder" type="button">Скопіювати замовлення</button>${btn[ch]}
+    $("#cartFoot").innerHTML=`<button class="primary" id="copyOrder" type="button">1. Скопіювати замовлення</button>${btn[ch]}
       <button class="ghost" id="newOrder" type="button">Повернутися до крамниці</button>`;return;
   }
   $("#cartTitle").textContent="Кошик";
@@ -640,7 +642,8 @@ document.addEventListener("click",e=>{
     cart=[];store.set("kr_cart",cart);renderAll();renderCart("done");
   }
   else if(t.id==="copyOrder"){const txt=window._order||"";
-    (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>toast("Скопійовано")).catch(()=>{const r=document.createRange();r.selectNodeContents($("#orderText"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("Текст виділено — скопіюйте вручну")})}
+    const next=()=>{t.className="ghost copied";t.textContent="✓ Замовлення скопійовано";const g=$("#goMsg");if(g)g.className="primary"};
+    (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>{toast("Скопійовано");next()}).catch(()=>{const r=document.createRange();r.selectNodeContents($("#orderText"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("Текст виділено — скопіюйте вручну");next()})}
   else if(t.id==="newOrder"){closeAll()}
   else if(t.id==="openAdmin"){editId=null;pendingImage=null;openP("#adminPanel");renderAdmin()}
   else if(t.id==="a_login"){login()}
