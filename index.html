@@ -134,7 +134,13 @@ a.add{text-decoration:none}
 .dbody h2{margin:0;padding-right:48px;font-family:var(--f-head);font-weight:800;color:var(--ink);font-size:clamp(22px,3vw,28px);line-height:1.15;text-wrap:balance}
 .dtags{display:flex;flex-wrap:wrap;gap:8px}
 .dtags span{background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:800;color:var(--ink)}
-.dtext{white-space:pre-line;font-size:16px;line-height:1.65;max-width:68ch;margin:0}
+.dtext{font-size:16px;line-height:1.65;display:grid;gap:10px}
+.dtext p{margin:0;text-align:justify;hyphens:auto;-webkit-hyphens:auto}
+.dtext h4{margin:6px 0 0;font-family:var(--f-head);font-size:18px;color:var(--ink)}
+.dtext ul{margin:0;padding-left:22px;display:grid;gap:4px}
+.toolbar{display:flex;flex-wrap:wrap;gap:6px}
+.toolbar button{border:1.5px solid var(--line);background:var(--white);border-radius:8px;min-width:36px;height:34px;padding:0 10px;font-weight:800;font-size:13px}
+.toolbar button:hover{border-color:var(--blue);color:var(--blue)}
 .dvideo{position:relative;aspect-ratio:16/9;max-width:100%;border-radius:12px;overflow:hidden;background:transparent}
 .dvideo.vert{width:min(360px,100%);justify-self:center}
 .dvideo iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
@@ -450,6 +456,19 @@ function videoBtn(p){if(!p.video)return "";const y=ytId(p.video);
   return y?`<button class="vid" type="button" data-video="${esc(p.id)}">▶ Дивитися огляд</button>`:`<a class="vid" href="${esc(p.video)}" target="_blank" rel="noopener">▶ Дивитися огляд</a>`}
 function openVideo(p){const y=ytId(p.video);if(!y)return;$("#vtitle").textContent=p.title;
   $("#vframe").innerHTML=`<iframe src="https://www.youtube-nocookie.com/embed/${y}?autoplay=1&rel=0" title="Відеоогляд" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`;$("#vmodal").hidden=false}
+/* Просте форматування опису: **жирний**, *курсив*, ## заголовок, - список */
+function inl(t){return t.replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[^*])\*(?!\s)(.+?)\*(?!\*)/g,"$1<i>$2</i>")}
+function fmt(text){
+  const lines=esc(text||"").split(/\r?\n/); let out="",para=[],list=[];
+  const flushP=()=>{if(para.length){out+=`<p>${inl(para.join("<br>"))}</p>`;para=[]}};
+  const flushL=()=>{if(list.length){out+=`<ul>${list.map(x=>`<li>${inl(x)}</li>`).join("")}</ul>`;list=[]}};
+  for(const raw of lines){const l=raw.trim();
+    if(!l){flushP();flushL();continue}
+    if(/^##\s+/.test(l)){flushP();flushL();out+=`<h4>${inl(l.replace(/^##\s+/,""))}</h4>`;continue}
+    if(/^[-•]\s+/.test(l)){flushP();list.push(l.replace(/^[-•]\s+/,""));continue}
+    flushL();para.push(l)}
+  flushP();flushL();return out}
+const plain=t=>String(t||"").replace(/\*\*|##\s*/g,"").replace(/(^|\n)[-•]\s+/g,"$1").replace(/\*(\S.*?)\*/g,"$1");
 function buyBtn(p){const free=Number(p.price)===0, inCart=cart.includes(p.id);
   return free?(p.demo?`<a class="add free" href="${esc(p.demo)}" target="_blank" rel="noopener"><svg class="ic"><use href="#i-cloud"/></svg>Завантажити безплатно</a>`:`<span class="add soon">Скоро буде доступно</span>`)
     :`<button class="add ${inCart?"in":""}" type="button" data-add="${esc(p.id)}"><svg class="ic"><use href="#i-cart"/></svg>${inCart?"У кошику":"До кошика"}</button>`}
@@ -460,7 +479,7 @@ function openDetail(id){
     <div class="dbody">
       <h2>${esc(p.title)}</h2>
       <div class="dtags">${[sec(p.section).name,p.format,p.subject,clsLabel(p.classes)].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join("")}${p.isNew?`<span style="background:var(--band)">Новинка</span>`:""}</div>
-      ${p.desc?`<p class="dtext">${esc(p.desc)}</p>`:""}
+      ${p.desc?`<div class="dtext">${fmt(p.desc)}</div>`:""}
       ${embedSrc(p.video)?`<div class="dvideo${isVertical(p.video)?" vert":""}" style="aspect-ratio:${videoRatio(p.video)}"><iframe src="${esc(embedSrc(p.video))}" title="Відеоогляд" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe></div>`:""}
       <div class="dlinks">${p.video&&!embedSrc(p.video)?`<a class="vid" href="${esc(p.video)}" target="_blank" rel="noopener">▶ Дивитися відеоогляд</a>`:""}${p.demo&&!free?`<a class="demo" href="${esc(p.demo)}" target="_blank" rel="noopener">Переглянути демо →</a>`:""}<button class="more" type="button" id="dshare">Скопіювати посилання на цей матеріал</button></div>
       <div class="dbuy"><div class="price">${free?"Безплатно":money(p.price)+(p.unit?`<small>${esc(p.unit)}</small>`:"")}</div>${buyBtn(p)}</div>
@@ -511,7 +530,7 @@ function card(p){
     <div class="info">
       <h3 data-open="${esc(p.id)}">${esc(p.title)}</h3>
       <div class="meta">${esc(p.format||sec(p.section).name)}${clsLabel(p.classes)?" · "+clsLabel(p.classes):""}</div>
-      ${p.desc?`<p class="desc">${esc(p.desc)}</p>`:""}
+      ${p.desc?`<p class="desc">${esc(plain(p.desc))}</p>`:""}
       <button class="more" type="button" data-open="${esc(p.id)}">Детальніше${p.video?" і відеоогляд":""} →</button>
       ${p.demo&&!free?`<a class="demo" href="${esc(p.demo)}" target="_blank" rel="noopener">Переглянути демо →</a>`:""}
       <div class="price">${free?"Безплатно":money(p.price)+(p.unit?`<small>${esc(p.unit)}</small>`:"")}</div>
@@ -618,7 +637,12 @@ function renderAdmin(){
       <label class="f">Формат<input id="a_format" value="${esc(p?.format)}" placeholder="PDF • цифровий товар"></label></div>
     <div style="display:grid;gap:5px;font-size:13px;font-weight:800;color:var(--ink)">Класи
       <div class="chips">${CLASSES.map(c=>`<button class="chip" type="button" data-acls="${c}" aria-pressed="${!!(p&&(p.classes||[]).includes(c))}">${c}</button>`).join("")}</div></div>
-    <label class="f">Опис<span class="hint" style="font-weight:600">На картці видно перші рядки, а повний текст — у вікні «Детальніше». Можна писати абзацами.</span><textarea id="a_desc" rows="7">${esc(p?.desc)}</textarea></label>
+    <label class="f">Опис<span class="hint" style="font-weight:600">На картці видно перші рядки, а повний текст — у вікні «Детальніше». Виділіть текст і натисніть кнопку, щоб зробити його жирним, курсивом, підзаголовком чи списком. Порожній рядок — новий абзац.</span><div class="toolbar" role="group" aria-label="Форматування">
+      <button type="button" data-fmt="b" title="Жирний"><b>Ж</b></button>
+      <button type="button" data-fmt="i" title="Курсив"><i>К</i></button>
+      <button type="button" data-fmt="h" title="Підзаголовок">Підзаголовок</button>
+      <button type="button" data-fmt="l" title="Список">• Список</button>
+    </div><textarea id="a_desc" rows="9">${esc(p?.desc)}</textarea></label>
     <div class="coverpick">
       <div class="cprev" id="a_prev" style="${cur?`background-image:url('${esc(cur)}')`:""}">${cur?"":"Без обкладинки"}</div>
       <div style="display:grid;gap:6px;min-width:0">
@@ -734,6 +758,12 @@ document.addEventListener("click",e=>{
   else if(t.id==="a_cancel"){editId=null;pendingImage=null;renderAdmin()}
   else if(t.id==="a_noimg"){pendingImage=null;const pr=$("#a_prev");pr.style.backgroundImage="";pr.textContent="Без обкладинки";pr.dataset.removed="1";t.remove()}
   else if(t.id==="a_save"){saveItem()}
+  else if(t.dataset.fmt){const ta=$("#a_desc");if(!ta)return;const a=ta.selectionStart,b=ta.selectionEnd,v=ta.value,sel=v.slice(a,b);let ins,c0,c1;
+    if(t.dataset.fmt==="b"||t.dataset.fmt==="i"){const m=t.dataset.fmt==="b"?"**":"*";ins=m+(sel||"текст")+m;c0=a+m.length;c1=c0+(sel||"текст").length}
+    else{const ls=v.lastIndexOf("\n",a-1)+1, pre=t.dataset.fmt==="h"?"## ":"- ";
+      const block=v.slice(ls,b).split("\n").map(x=>x.replace(/^(##\s+|[-•]\s+)/,"")).map(x=>pre+x).join("\n");
+      ta.value=v.slice(0,ls)+block+v.slice(b);ta.focus();ta.setSelectionRange(ls,ls+block.length);return}
+    ta.value=v.slice(0,a)+ins+v.slice(b);ta.focus();ta.setSelectionRange(c0,c1)}
   else if(t.id==="h_reset"){setHero(null)}
   else if(t.dataset.del){if(t.dataset.sure){deleteItem(t.dataset.del)}else{t.dataset.sure="1";t.textContent="Точно видалити?"}}
   else if(t.id==="a_reset"){if(t.dataset.sure){products=SAMPLE.slice();store.set("kr_demo",products);afterSave("Приклад відновлено")}else{t.dataset.sure="1";t.textContent="Натисніть ще раз, щоб підтвердити"}}
