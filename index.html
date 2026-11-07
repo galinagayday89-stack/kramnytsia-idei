@@ -425,6 +425,9 @@ const sec=id=>SECTIONS.find(s=>s.id===id)||{name:"",c:2};
 const imgSrc=v=>!v?"":(IMG[v]||v);
 const clsLabel=a=>!a||!a.length?"":a.length===1?a[0]+" клас":a[0]+"–"+a[a.length-1]+" кл.";
 const tintOf=p=>sec(p.section).c;
+const VTAG=/\s*\[відео\]\s*(\S+)\s*$/;
+function normalize(list){return (list||[]).map(p=>{const q={...p};const m=String(q.desc||"").match(VTAG);
+  if(m){q.desc=q.desc.replace(VTAG,"");if(!q.video)q.video=m[1]}return q})}
 function ytId(u){const m=String(u||"").match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/))([\w-]{11})/);return m?m[1]:""}
 function videoBtn(p){if(!p.video)return "";const y=ytId(p.video);
   return y?`<button class="vid" type="button" data-video="${esc(p.id)}">▶ Дивитися огляд</button>`:`<a class="vid" href="${esc(p.video)}" target="_blank" rel="noopener">▶ Дивитися огляд</a>`}
@@ -461,7 +464,7 @@ async function loadProducts(){
   if(!LIVE) return;
   try{
     const r=await (await fetch(SETTINGS.api+"?action=list")).json();
-    if(r.ok){products=r.products;store.set("kr_cache",products);if(r.settings){store.set("kr_settings",r.settings);applySettings(r.settings)}}
+    if(r.ok){products=normalize(r.products);store.set("kr_cache",products);if(r.settings){store.set("kr_settings",r.settings);applySettings(r.settings)}}
   }catch(e){ if(!products.length) toast("Не вдалося завантажити роботи. Оновіть сторінку.") }
   loading=false; setTimeout(openFromHash,0); cart=cart.filter(id=>products.some(p=>p.id===id)); store.set("kr_cart",cart);
   renderPills();renderAll();
@@ -648,15 +651,16 @@ async function saveItem(){
   }
   setBusy(true,pendingImage?"Завантажуємо обкладинку…":"Зберігаємо…");
   try{
-    const r=await api({action:"save",password:pass,product:item,imageData:pendingImage});
+    const send={...item,desc:item.desc+(item.video?"\n[відео] "+item.video:"")};
+    const r=await api({action:"save",password:pass,product:send,imageData:pendingImage});
     if(!r.ok){ if(/пароль/i.test(r.error||"")){pass="";sess.set("kr_pass","");renderAdmin()} toast(r.error||"Не вдалося зберегти"); setBusy(false,editId?"Зберегти зміни":"Додати в крамницю"); return }
-    products=r.products;store.set("kr_cache",products);afterSave(editId?"Зміни збережено":"Додано в крамницю");
+    products=normalize(r.products);store.set("kr_cache",products);afterSave(editId?"Зміни збережено":"Додано в крамницю");
   }catch(e){toast("Немає зв'язку з таблицею. Спробуйте ще раз.");setBusy(false,editId?"Зберегти зміни":"Додати в крамницю")}
 }
 function afterSave(msg){editId=null;pendingImage=null;busy=false;renderPills();renderAll();renderAdmin();$("#adminBody").scrollTop=0;toast(msg)}
 async function deleteItem(id){
   if(!LIVE){products=products.filter(x=>x.id!==id);store.set("kr_demo",products);afterDel();return}
-  try{const r=await api({action:"delete",password:pass,id});if(!r.ok){toast(r.error||"Не вдалося видалити");return}products=r.products;store.set("kr_cache",products);afterDel()}
+  try{const r=await api({action:"delete",password:pass,id});if(!r.ok){toast(r.error||"Не вдалося видалити");return}products=normalize(r.products);store.set("kr_cache",products);afterDel()}
   catch(e){toast("Немає зв'язку з таблицею. Спробуйте ще раз.")}
 }
 function afterDel(){cart=cart.filter(x=>products.some(p=>p.id===x));store.set("kr_cart",cart);if(editId&&!products.some(p=>p.id===editId))editId=null;renderPills();renderAll();renderAdmin();toast("Видалено")}
