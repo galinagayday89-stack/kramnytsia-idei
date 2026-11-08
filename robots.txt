@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://galinagayday89-stack.github.io/kramnytsia-idei/sitemap.xml
